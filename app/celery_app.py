@@ -1,12 +1,15 @@
 from celery import Celery
-from app.config import REDIS_URL
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
 
 celery = Celery(
-    "worker",
-    broker=REDIS_URL,
-    backend=REDIS_URL
+    "rag_chatbot",
+    broker="redis://localhost:6379/0",
+    backend="redis://localhost:6379/0",
 )
 
-celery.conf.task_routes = {
-    "app.tasks.*": {"queue": "rag_queue"}
-}
+celery.autodiscover_tasks(["app"])
+
+import app.tasks

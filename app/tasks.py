@@ -1,7 +1,6 @@
 from app.celery_app import celery
-from app.rag import generate_answer
+from app.agent.agent import run_agent
 
-@celery.task(name="app.tasks.run_rag")
-def run_rag(query: str):
-    result = generate_answer(query)
-    return result
+@celery.task(name="app.tasks.run_agent")
+def run_agent_task(session_id: str, question: str):
+    return run_agent(session_id, question)

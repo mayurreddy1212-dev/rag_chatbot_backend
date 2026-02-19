@@ -1,3 +1,5 @@
+basic plan:
+
 Frontend (React / Vercel)
         ↓
 FastAPI (Render Web Service)
@@ -18,3 +20,6 @@ No GPU hosting required
 Perfect for agent loops
 
 Cheap compared to OpenAI
+
+
+celery : celery -A app.celery_app worker --pool=solo --loglevel=info
