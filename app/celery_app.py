@@ -1,6 +1,5 @@
 from celery import Celery
 from dotenv import load_dotenv
-import os
 
 load_dotenv()
 
@@ -12,4 +11,3 @@ celery = Celery(
 
 celery.autodiscover_tasks(["app"])
 
-import app.tasks
