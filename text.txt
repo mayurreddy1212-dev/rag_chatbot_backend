@@ -1,0 +1,20 @@
+Frontend (React / Vercel)
+        ↓
+FastAPI (Render Web Service)
+        ↓
+Redis (Render Managed Redis)
+        ↓
+Celery Worker (Render Background Worker)
+        ↓
+Vector Store (Redis / PG / Qdrant etc.)
+
+
+why groq ?
+
+Extremely low latency
+
+No GPU hosting required
+
+Perfect for agent loops
+
+Cheap compared to OpenAI
