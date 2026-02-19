@@ -1,10 +1,10 @@
 from groq import Groq
-from app.config import groq
+from app.config import GROQ_API_KEY
 import os
 from dotenv import load_dotenv
 load_dotenv()
 
-if not groq:
+if not GROQ_API_KEY:
     raise ValueError("GROQ_API_KEY is not set in .env file")
 
 # Dummy knowledge base
@@ -34,7 +34,7 @@ def generate_answer(query: str):
     {query}
     """
 
-    response = groq.chat.completions.create(
+    response = GROQ_API_KEY.chat.completions.create(
         model="llama-3.3-70b-versatile",  # Groq hosted model
         messages=[
             {"role": "system", "content": "You are a helpful AI assistant."},

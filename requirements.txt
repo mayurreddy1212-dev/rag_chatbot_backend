@@ -4,3 +4,8 @@ celery
 redis
 python-dotenv
 groq
+sentence-transformers
+torch
+numpy
+pypdf
+python-docx

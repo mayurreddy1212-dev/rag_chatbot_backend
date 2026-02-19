@@ -2,6 +2,10 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 from app.tasks import run_agent_task
 from app.celery_app import celery
+from fastapi import FastAPI, UploadFile, File
+import shutil
+import os
+from app.tasks import process_document_task
 
 app = FastAPI()
 
@@ -40,3 +44,19 @@ def get_result(task_id: str):
     else:
         return {"status": task.state}
 
+#upload files
+UPLOAD_DIR = "uploads"
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+
+@app.post("/upload")
+async def upload_document(file: UploadFile = File(...)):
+    file_path = os.path.join(UPLOAD_DIR, file.filename)
+
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+
+    document_id = file.filename
+
+    task = process_document_task.delay(file_path, document_id)
+
+    return {"task_id": task.id}
