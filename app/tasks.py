@@ -1,13 +1,13 @@
 from app.celery_app import celery
+from app.agent.rag import generate_answer
 
-@celery.task(name="app.tasks.run_agent")
+@celery.task(name="app.tasks.run_agent_task")
 def run_agent_task(session_id: str, question: str):
-    from app.agent.agent import run_agent
-    return run_agent(session_id, question)
+    return generate_answer(question)
 
 from app.celery_app import celery
 
-@celery.task(name="app.tasks.process_document")
+@celery.task(name="app.tasks.process_document_task")
 def process_document_task(file_path: str, document_id: str):
     from app.agent.document_loader import load_pdf, load_docx, load_txt
     from app.agent.chunker import chunk_text

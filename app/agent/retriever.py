@@ -1,12 +1,12 @@
-DOCUMENTS = [
-    "Redis is an in-memory key value store.",
-    "Celery is a distributed task queue.",
-    "FastAPI is a modern Python web framework.",
-    "RAG stands for Retrieval Augmented Generation."
-]
+from app.agent.vector_store import search
 
-def retrieve_docs(query: str):
-    for doc in DOCUMENTS:
-        if query.lower() in doc.lower():
-            return doc
-    return DOCUMENTS[0]
+def retrieve_context(query: str, top_k: int = 3) -> str:
+    """
+    Retrieve top relevant chunks from vector store.
+    """
+    results = search(query, top_k=top_k)
+
+    if not results:
+        return ""
+
+    return "\n\n".join(results)
