@@ -9,14 +9,22 @@ r = redis.Redis.from_url(REDIS_URL, decode_responses=True)
 
 def add_chunk(document_id: str, text: str):
     embedding = get_embedding(text)
-
     chunk_id = str(uuid.uuid4())
 
-    r.set(f"chunk:{chunk_id}", json.dumps({
+    chunk_data = {
         "document_id": document_id,
         "text": text,
         "embedding": embedding
-    }))
+    }
+
+    #store chunk
+    r.set(f"chunk:{chunk_id}", json.dumps(chunk_data))
+
+    #register document
+    r.sadd("documents", document_id)
+
+    #link chunk to document
+    r.sadd(f"doc_chunks:{document_id}", chunk_id)
 
 def get_all_chunks():
     keys = r.keys("chunk:*")
@@ -24,6 +32,28 @@ def get_all_chunks():
     for key in keys:
         chunks.append(json.loads(r.get(key)))
     return chunks
+
+def list_documents():
+    return list(r.smembers("documents"))
+
+def count_documents():
+    return r.scard("documents")
+
+def delete_document(document_id: str):
+
+    # get chunk ids
+    chunk_ids = r.smembers(f"doc_chunks:{document_id}")
+
+    for chunk_id in chunk_ids:
+        r.delete(f"chunk:{chunk_id}")
+
+    # delete chunk set
+    r.delete(f"doc_chunks:{document_id}")
+
+    # remove document from registry
+    r.srem("documents", document_id)
+
+    return f"Deleted document {document_id}"
 
 def cosine_similarity(a, b):
     a = np.array(a)

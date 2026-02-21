@@ -1,13 +1,24 @@
-from fastapi import FastAPI
+from fastapi import FastAPI,HTTPException
 from pydantic import BaseModel
 from app.tasks import run_agent_task
 from app.celery_app import celery
-from fastapi import FastAPI, UploadFile, File
+from fastapi import FastAPI, UploadFile, File, Depends
 import shutil
 import os
 from app.tasks import process_document_task
+from app.agent.vector_store import list_documents, count_documents, delete_document
+from app.database import get_db
+from app.models import Document
+from app.schemas import DocumentResponse
+from app.agent.vector_store import delete_document as delete_from_redis
+from sqlalchemy.orm import Session
+from typing import List
+from app.database import engine
+from app.models import Base
 
 app = FastAPI()
+
+Base.metadata.create_all(bind=engine)
 
 class QueryRequest(BaseModel):
     session_id: str
@@ -48,15 +59,60 @@ def get_result(task_id: str):
 UPLOAD_DIR = "uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
+
 @app.post("/upload")
-async def upload_document(file: UploadFile = File(...)):
-    file_path = os.path.join(UPLOAD_DIR, file.filename)
+def upload_documents(
+    files: List[UploadFile] = File(...),
+    db: Session = Depends(get_db)
+):
+    uploaded_docs = []
 
-    with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
+    for file in files:
+        #Save file to disk
+        file_path = os.path.join(UPLOAD_DIR, file.filename)
 
-    document_id = file.filename
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
 
-    task = process_document_task.delay(file_path, document_id)
+        #Save metadata to DB
+        doc = Document(filename=file.filename)
+        db.add(doc)
+        db.commit()
+        db.refresh(doc)
 
-    return {"task_id": task.id}
+        #Send to Celery with document_id
+        process_document_task.delay(doc.id, file_path)
+
+        uploaded_docs.append({
+            "document_id": doc.id,
+            "filename": doc.filename
+        })
+
+    return {
+        "status": "processing_started",
+        "documents": uploaded_docs
+    }
+
+@app.get("/documents", response_model=List[DocumentResponse])
+def get_documents(db: Session = Depends(get_db)):
+    documents = db.query(Document).all()
+    return documents
+
+@app.delete("/documents/{document_id}")
+def delete_document_route(document_id: int, db: Session = Depends(get_db)):
+
+    document = db.query(Document).filter(Document.id == document_id).first()
+
+    if not document:
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    delete_from_redis(str(document_id))
+
+    file_path = os.path.join(UPLOAD_DIR, document.filename)
+    if os.path.exists(file_path):
+        os.remove(file_path)
+
+    db.delete(document)
+    db.commit()
+
+    return {"status": "deleted", "document_id": document_id}
